@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: fixWebSourcesDescriptionLength
+      author: Ahmed Abassi
+      changes:
+        - modifyDataType:
+            tableName: source_web
+            columnName: description
+            newDataType: TEXT

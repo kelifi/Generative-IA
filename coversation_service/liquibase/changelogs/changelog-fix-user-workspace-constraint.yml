@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: UniqueContraintWorkspace
+      author: Akram Gharbi
+      changes:
+        - addUniqueConstraint:
+            tableName: users_workspaces
+            columnNames: user_id, workspace_id
+            constraintName: uq_user_workspace_combination

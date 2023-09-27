@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: fixSourceWebParagraphsContentLength
+      author: Houssem khelifi
+      changes:
+        - modifyDataType:
+            columnName: description
+            newDataType: TEXT
+            tableName: source_web
+
+  - changeSet:
+      id: fixSourceWebDescriptionContentLength
+      author: Houssem khelifi
+      changes:
+        - modifyDataType:
+                    columnName: description
+                    newDataType: TEXT
+                    tableName: source_web

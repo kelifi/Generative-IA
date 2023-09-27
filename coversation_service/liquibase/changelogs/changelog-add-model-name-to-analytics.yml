@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: addModelNameColumn
+      author: Ahmed Abassi
+      changes:
+        - addColumn:
+            tableName: answer_analytics
+            columns:
+              - column:
+                  name: model_name
+                  type: TEXT

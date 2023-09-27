@@ -1,0 +1,153 @@
+databaseChangeLog:
+  - changeSet:
+      id: createModelTable
+      author: Ahmed Abassi
+      preConditions:
+        onFail: MARK_RAN
+        not:
+          tableExists:
+            tableName: model
+      changes:
+        - createTable:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+              - column:
+                  name: route
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: available
+                  type: boolean
+                  constraints:
+                    nullable: false
+                    defaultValue: true
+              - column:
+                  name: default
+                  type: boolean
+                  constraints:
+                    nullable: false
+                    defaultValue: false
+              - column:
+                  name: type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creation_date
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+                    defaultValueComputed: now()
+              - column:
+                  name: update_date
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: populateModelTable
+      author: Ahmed Abassi
+      preConditions:
+        onFail: MARK_RAN
+        tableExists:
+          tableName: model
+      changes:
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: 7388f098-71e6-4a5a-bc85-0e019e60c17c
+              - column:
+                  name: name
+                  value: 'gpt-3.5-turbo'
+              - column:
+                  name: code
+                  value: 'M1'
+              - column:
+                  name: route
+                  value: 'http://elgen-esg-online-model.elgen-dev.svc.cluster.local:8000/inference'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: true
+              - column:
+                  name: type
+                  value: chat
+              - column:
+                  name: creation_date
+                  value: now()
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: d1600ac0-4f28-4b17-a9f3-8a4958739b7c
+              - column:
+                  name: name
+                  value: 'falcon-7b-instruct'
+              - column:
+                  name: code
+                  value: 'M2'
+              - column:
+                  name: route
+                  value: 'http://elgen-esg-model.elgen-dev.svc.cluster.local:8000/inference'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: false
+              - column:
+                  name: type
+                  value: chat
+              - column:
+                  name: creation_date
+                  value: now()
+
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: 52c62ab0-3024-4c70-b4d0-1a863032c03f
+              - column:
+                  name: name
+                  value: 'Classification Model'
+              - column:
+                  name: code
+                  value: 'C1'
+              - column:
+                  name: route
+                  value: 'http://elgen-esg-context.elgen-dev.svc.cluster.local:8000/topic/classification/v1'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: false
+              - column:
+                  name: type
+                  value: classification
+              - column:
+                  name: creation_date
+                  value: now()

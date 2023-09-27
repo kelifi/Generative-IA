@@ -1,0 +1,32 @@
+#This file should be executed after the creation of the model discovery table
+
+databaseChangeLog:
+  - changeSet:
+      id: AddModelCodeColumn
+      author: Ahmed Abassi
+      changes:
+        - addColumn:
+            tableName: answer_analytics
+            columns:
+              - column:
+                  name: model_code
+                  type: VARCHAR(255)
+
+  - changeSet:
+      id: GetTheRightCodePerName
+      author: Ahmed Abassi
+      changes:
+        - update:
+            tableName: answer_analytics
+            columns:
+              - column:
+                  name: model_code
+                  valueComputed: "(SELECT model_code FROM Model WHERE Model.name = answer_analytics.model_name)"
+
+  - changeSet:
+      id: DeleteModelNameColumn
+      author: Ahmed Abassi
+      changes:
+        - dropColumn:
+            tableName: answer_analytics
+            columnName: model_name

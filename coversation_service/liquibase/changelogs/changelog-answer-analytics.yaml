@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-answer-analytics-table
+      author: Your Name
+      changes:
+        - createTable:
+            tableName: answer_analytics
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: answer_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: inference_time
+                  type: FLOAT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: prompt_length
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+              - column:
+                  name: load_in_8bit
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+              - column:
+                  name: load_in_4bit
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+              - column:
+                  name: max_new_tokens
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+              - column:
+                  name: no_repeat_ngram_size
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+              - column:
+                  name: repetition_penalty
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+            foreignKeyConstraints:
+              - foreignKeyConstraint:
+                  baseColumnNames: answer_id
+                  baseTableName: answer_analytics
+                  referencedColumnNames: id
+                  referencedTableName: answer
+                  onDelete: CASCADE

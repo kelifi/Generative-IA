@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - include:
+      - file: changelog-init.yaml
+
+  - include:
+      - file: changelog-edit-answer.yaml
+
+  - include:
+      - file: changelog-edit-source-doc.yaml
+
+  - include:
+      - file: changelog-edit-question.yaml
+
+  - include:
+      - file: changelog-answer-analytics.yaml
+
+  - include:
+      - file: changelog-edit-source-web.yaml
+
+  - include:
+      - file: changelog-add-model-discovery-table.yml
+
+  - include:
+      - file: changelog-alter-answer-analytics-model-name-to-code.yml
+
+  - include:
+      - file: changelog-add-source-config-to-model-table.yml
+
+  - include:
+      - file: changelog-fix-model-discovery-table.yml
+
+  - include:
+      - file: changelog-fix-model-names.yml
+
+  - include:
+      - file: changelog-add-model-name-to-analytics.yml
+
+  - include:
+      - file: changelog-add-workspaces-table.yml
+
+  - include:
+      - file: changelog-fix-user-workspace-constraint.yml
+
+  - include:
+      - file: changelog-fix-workspace-field-name.yml
+

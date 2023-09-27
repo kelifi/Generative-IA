@@ -1,0 +1,248 @@
+databaseChangeLog:
+  - changeSet:
+      id: createConversationTable
+      author: Achref Jemail
+      changes:
+        - createTable:
+            ifNotExists: true
+            tableName: conversation
+            columns:
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: update_date
+                  type: TIMESTAMP WITHOUT TIME ZONE
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+            primaryKey:
+              columnNames: id
+            uniqueConstraints:
+              - uniqueConstraint:
+                  columnNames: id
+
+  - changeSet:
+      id: createQuestionTable
+      author: Achref Jemail
+      changes:
+        - createTable:
+            ifNotExists: true
+            tableName: question
+            columns:
+              - column:
+                  name: conversation_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: skip_doc
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: skip_web
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+            primaryKey:
+              columnNames: id
+            foreignKeyConstraints:
+              - foreignKeyConstraint:
+                  baseTableName: question
+                  baseColumnNames: conversation_id
+                  referencedTableName: conversation
+                  referencedColumnNames: id
+                  onDelete: CASCADE
+            uniqueConstraints:
+              - uniqueConstraint:
+                  columnNames: id
+
+  - changeSet:
+      id: createAnswerTable
+      ifNotExists: true
+      author: Achref Jemail
+      changes:
+        - createTable:
+            tableName: answer
+            columns:
+              - column:
+                  name: question_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rating
+                  type: VARCHAR(255)
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+            primaryKey:
+              columnNames: id
+            foreignKeyConstraints:
+              - foreignKeyConstraint:
+                  baseTableName: answer
+                  baseColumnNames: question_id
+                  referencedTableName: question
+                  referencedColumnNames: id
+                  onDelete: CASCADE
+            uniqueConstraints:
+              - uniqueConstraint:
+                  columnNames: id
+
+  - changeSet:
+      id: createSourceDocumentTable
+      author: Achref Jemail
+      changes:
+        - createTable:
+            tableName: source_document
+            columns:
+              - column:
+                  name: question_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+                    defaultValueComputed: NOW()
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+                    defaultValue: false
+            foreignKeyConstraints:
+              - foreignKeyConstraint:
+                  baseTableName: source_document
+                  baseColumnNames: question_id
+                  referencedTableName: question
+                  referencedColumnNames: id
+                  onDelete: CASCADE
+
+  - changeSet:
+      id: createSourceWebTable
+      author: Achref Jemail
+      changes:
+        - createTable:
+            tableName: source_web
+            columns:
+              - column:
+                  name: question_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: paragraphs
+                  type: TEXT
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+                    defaultValueComputed: NOW()
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+                    defaultValue: false
+            foreignKeyConstraints:
+              - foreignKeyConstraint:
+                  baseTableName: source_web
+                  baseColumnNames: question_id
+                  referencedTableName: question
+                  referencedColumnNames: id
+                  onDelete: CASCADE

@@ -1,0 +1,104 @@
+databaseChangeLog:
+  - changeSet:
+      id: removeModelTableData
+      author: Khaled Adrani
+      preConditions:
+        onFail: MARK_RAN
+        tableExists:
+          tableName: model
+      changes:
+        - delete:
+            tableName: model
+            where: "code IN ('M1', 'M2', 'C1')"
+
+
+  - changeSet:
+      id: populateModelTableWithFixedUrls
+      author: Khaled Adrani
+      preConditions:
+        onFail: MARK_RAN
+        tableExists:
+          tableName: model
+      changes:
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: 7388f098-71e6-4a5a-bc85-0e019e60c17c
+              - column:
+                  name: name
+                  value: 'gpt-3.5-turbo'
+              - column:
+                  name: code
+                  value: 'M1'
+              - column:
+                  name: route
+                  value: 'http://elgen-esg-online-model.elgen-dev.svc.cluster.local:8000'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: true
+              - column:
+                  name: type
+                  value: chat
+              - column:
+                  name: creation_date
+                  value: now()
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: d1600ac0-4f28-4b17-a9f3-8a4958739b7c
+              - column:
+                  name: name
+                  value: 'falcon-7b-instruct'
+              - column:
+                  name: code
+                  value: 'M2'
+              - column:
+                  name: route
+                  value: 'http://elgen-esg-model.elgen-dev.svc.cluster.local:8000'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: false
+              - column:
+                  name: type
+                  value: chat
+              - column:
+                  name: creation_date
+                  value: now()
+
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: 52c62ab0-3024-4c70-b4d0-1a863032c03f
+              - column:
+                  name: name
+                  value: 'Classification Model'
+              - column:
+                  name: code
+                  value: 'C1'
+              - column:
+                  name: route
+                  value: 'http://elgen-esg-context.elgen-dev.svc.cluster.local:8000'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: false
+              - column:
+                  name: type
+                  value: classification
+              - column:
+                  name: creation_date
+                  value: now()
