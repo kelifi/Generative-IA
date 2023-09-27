@@ -1,0 +1,136 @@
+version: '3'  # TODO: Add wait-for-it script to database instances
+
+services:
+  elgen-esg-cb-database:
+    image: "postgres:13.11"
+    restart: always
+    environment:
+      POSTGRES_DB: elgen_esg_cb_database
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    container_name: elgen-esg-cb-database
+    ports:
+      - "5433:5432"
+    volumes:
+      - /docker_volumes/elgen/postgresql_data/:/bitnami/postgresql/
+
+  elgen-keycloak-postgresql:
+    image: docker.io/bitnami/postgresql:15
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: 'yes'
+      POSTGRESQL_USERNAME: bn_keycloak
+      POSTGRESQL_DATABASE: bitnami_keycloak
+    container_name: elgen-keycloak-postgresql
+    ports:
+      - "5431:5432"
+    volumes:
+      - /docker_volumes/elgen/keycloak_postgres_data/:/bitnami/postgresql/
+
+  elgen-pgadmin:
+    image: dpage/pgadmin4:7.4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "root@root.root"
+      PGADMIN_DEFAULT_PASSWORD: "root"
+    depends_on:
+      - elgen-esg-cb-database
+    container_name: elgen-pgadmin
+    ports:
+      - "5051:80"
+
+  elgen-elasticsearch:
+    build:
+      context: .
+      dockerfile: Dockerfile-elastic
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms9112m -Xmx9112m
+    container_name: elgen-elasticsearch
+    ports:
+      - "9201:9200"
+    volumes:
+      - /docker_volumes/elgen/esdata/:/usr/share/elasticsearch/data/
+
+  elgen-kibana:
+    image: "docker.elastic.co/kibana/kibana:7.16.2"
+    environment:
+      ELASTICSEARCH_URL: http://elgen-elasticsearch:9200
+    depends_on:
+      - elgen-elasticsearch
+    container_name: elgen-kibana
+    ports:
+      - "5601:5601"
+
+  elgen-keycloak:
+    image: docker.io/bitnami/keycloak:16.1.1-debian-10-r70
+    restart: always
+    environment:
+      KEYCLOAK_CREATE_ADMIN_USER: 'true'
+      KEYCLOAK_ADMIN_USER: root
+      KEYCLOAK_ADMIN_PASSWORD: root
+      KEYCLOAK_DATABASE_HOST: elgen-keycloak-postgresql
+      KEYCLOAK_DATABASE_PORT: 5432
+    depends_on:
+      - elgen-keycloak-postgresql
+    container_name: elgen-keycloak
+    ports:
+      - "8010:8080"
+    volumes:
+      - /docker_volumes/elgen/keycloak_theme_data/:/opt/bitnami/keycloak/themes/mynewtheme/
+
+  elgen-milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: always
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: 1000
+      ETCD_QUOTA_BACKEND_BYTES: 4294967296
+      ETCD_SNAPSHOT_COUNT: 50000
+    container_name: elgen-milvus-etcd
+    volumes:
+      - /docker_volumes/elgen/milvus_etcd/:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+
+  elgen-milvus-minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: always
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    container_name: elgen-milvus-minio
+    volumes:
+      - /docker_volumes/elgen/milvus_minio/:/minio_data
+    command: minio server /minio_data
+
+  elgen-milvus-standalone:
+    image: milvusdb/milvus:v2.2.11
+    restart: always
+    command: [ "milvus", "run", "standalone" ]
+    environment:
+      ETCD_ENDPOINTS: elgen-milvus-etcd:2379
+      MINIO_ADDRESS: elgen-milvus-minio:9000
+    container_name: elgen-milvus-standalone
+    volumes:
+      - /docker_volumes/elgen/milvus_standalone/:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - elgen-milvus-etcd
+      - elgen-milvus-minio
+
+  liquibase:
+    build:
+      context: ../elgen-esg-conversation-service/liquibase
+      dockerfile: Dockerfile
+    environment:
+      - DB_HOST=elgen-esg-cb-database
+      - DB_NAME=elgen_esg_cb_database
+      - DB_PORT=5432
+      - DB_USER=root
+      - DB_PASSWORD=root
+    depends_on:
+      - elgen-esg-cb-database
+    container_name: liquibase
+

@@ -1,0 +1,181 @@
+version: '3'
+
+services:
+  elgen-esg-dashboard:
+    build:
+      context: ../elgen-esg-dashboard/
+      args:
+        BFF_URL: "http://0.0.0.0:8000"
+        WEBSOCKET_URL: "ws://0.0.0.0:8000"
+    restart: always
+    depends_on:
+      - elgen-esg-bff
+    container_name: elgen-esg-dashboard
+    ports:
+      - "8888:8080"
+    volumes:
+      - ../nginx.conf:/opt/bitnami/nginx/conf/server_blocks/http.conf
+
+  elgen-esg-bff:
+    build:
+      context: ../elgen-esg-bff/
+    restart: always
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      CONVERSATION_SERVICE_URL: http://elgen-esg-conversation-service:8001
+      SOURCES_SERVICE_URL: http://elgen-esg-source-service:8002
+      # Keycloak Service config
+      SERVER_URL: http://elgen-keycloak:8080/auth
+      TOKEN_URL: http://elgen-keycloak:8080/auth/realms/elgen/protocol/openid-connect/token
+      KEYCLOAK_CLIENT_ID: elgen
+      KEYCLOAK_CLIENT_SECRET: CrCmW2K8qQpLmB2CvIgav5UMranwLNVX
+      ADMIN_CLIENT_ID: admin-cli
+      ADMIN_CLIENT_SECRET: Xpt52305VB3QlP9mCjzUdnSHZD3i6jPz
+      REALM: elgen
+      REDIRECT_PATH: http://elgen-esg-dashboard:8888/callback
+      ADMIN_GROUP_ID: 088f18c2-7f2a-46b4-9b50-e7534a7fa0d9
+      USER_GROUP_ID: 071f1f4b-1f46-47f8-8b4b-e734858b93da
+      GRANT_TYPE: password
+      # Web Sources Config
+      NUM_RESULT: 4
+    depends_on:
+      - elgen-esg-conversation-service
+      - elgen-esg-source-service
+    container_name: elgen-esg-bff
+    ports:
+      - "8000:8000"
+
+  elgen-esg-conversation-service:
+    build:
+      context: ../elgen-esg-conversation-service/
+    restart: always
+    environment:
+      # App Config
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8001
+      MODEL_SERVICE_HOST: elgen-esg-model-service
+      MODEL_SERVICE_PORT: 8003
+      MODEL_SERVICE_PREDICT_URI: '/inference'
+      # Summirization config
+      NUM_LINES: 5
+      # database config
+      DB_HOST: elgen-esg-cb-database
+      DB_PORT: 5432
+      DB_NAME: elgen_esg_cb_database
+      DB_USER: root
+      DB_PASSWORD: root
+    depends_on:
+      - elgen-esg-model-service
+    container_name: elgen-esg-conversation-service
+    ports:
+      - "8001:8001"
+
+  elgen-esg-source-service:
+    build:
+      context: ../elgen-esg-source-service/
+    restart: always
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8002
+      APP_ENV: 'dev'
+      APP_VERSION: '0.0.0'
+      WORKERS_COUNT: 1
+      PDF_DOCUMENTS_DIRECTORY: static/pdf_documents
+      # Vector Service config
+      VECTOR_STORE_HOST: elgen-esg-vector-service
+      VECTOR_STORE_PORT: 8004
+      DEFAULT_RESULTS_NUMBER: 2
+    depends_on:
+      - elgen-esg-vector-service
+    container_name: elgen-esg-source-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - /docker_volumes/elgen/artifacts/source_documents/:/app/static/pdf_documents/
+
+  elgen-esg-model-service:
+    build:
+      context: ../elgen-esg-model-service/
+    restart: always
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8003
+      MODEL_NAME: "tiiuae/falcon-7b-instruct"
+      # database config
+      MODEL_DIRECTORY: models/
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_MODEL_NAME: "gpt-3.5-turbo"
+      MODEL_TYPE: 'OPENAI'
+      LOAD_LOCAL_MODEL: 0
+      MODEL_MAX_LENGTH: 50
+      MODEL_DEVICE_MAP: 'auto'
+      TOPIC_CLASSIFIER_MODEL_NAME: 'cardiffnlp/tweet-topic-21-multi'
+    container_name: elgen-esg-model-service
+    ports:
+      - "8003:8003"
+    volumes:
+      - /docker_volumes/elgen/artifacts/models/:/app/models/
+
+  elgen-esg-vector-service:
+    build:
+      context: ../elgen-esg-vector-service/
+    restart: always
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8004
+      APP_ENV: 'dev'
+      WORKERS_COUNT: 1
+      #vector db config
+      EMBEDDINGS_MODEL_NAME: all-distilroberta-v1
+      TOP_K: 2
+      PERSIST_DIRECTORY: "db"
+      SOURCE_DIRECTORY: artifacts/source_documents/
+      TARGET_SOURCE_CHUNKS: 8
+      DEFAULT_COLLECTION_NAME: 'vectors'
+      #Milvus config
+      MILVUS_HOST: elgen-milvus-standalone
+      MILVUS_PORT: 19530
+      MILVUS_PASSWORD: password
+      MILVUS_USER: username
+      MILVUS_ALIAS: my_session
+    container_name: elgen-esg-vector-service
+    ports:
+      - "8004:8004"
+    volumes:
+      - /docker_volumes/elgen/vector_db/:/app/db/
+
+  elgen-esg-ingest-service:
+    build:
+      context: ../elgen-esg-ingest-service/
+    restart: always
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8005
+      APP_ENV: 'dev'
+      WORKERS_COUNT: 1
+      # Document config
+      SOURCE_DIRECTORY: artifacts
+      # Elasticsearch Config
+      ES_HOST: elgen-elasticsearch
+      ES_PORT: 9200
+      INGESTION_INDEX: documents
+      TASK_INDEX: tasks
+      ES_FIELD_NAME: doc_field
+      ES_PIPELINE_NAME: attachment
+      # Ingestion Configuration
+      CHUNK_SIZE: 350
+      CHUNK_OVERLAP: 50
+      TARGET_SOURCE_CHUNKS: 8
+      # Vector Store config
+      VEC_HOST: elgen-esg-vector-service
+      VEC_PORT: 8004
+      VEC_STORE_ENDPOINT: "milvus/store-data"
+    depends_on:
+      - elgen-esg-vector-service
+    container_name: elgen-esg-ingest-service
+    ports:
+      - "8005:8005"
+    volumes:
+      - /docker_volumes/elgen/artifacts/:/app/artifacts/
+

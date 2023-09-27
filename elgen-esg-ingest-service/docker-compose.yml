@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+
+  elgen-elasticsearch:
+    build:
+      context: .
+      dockerfile: Dockerfile-elastic
+    container_name: elgen-elasticsearch
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9201:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - default
+
+  elgen-kibana:
+    image: "docker.elastic.co/kibana/kibana:7.16.2"
+    container_name: elgen-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elgen-elasticsearch:9200
+    depends_on:
+      - elgen-elasticsearch
+    networks:
+      - default
+
+volumes:
+  esdata:

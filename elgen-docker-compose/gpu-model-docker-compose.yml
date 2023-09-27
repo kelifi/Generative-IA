@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  elgen-gpu-esg-model-service:
+    build:
+      context: ../elgen-esg-model-service/
+    restart: always
+    environment:
+      # App Config
+      APP_HOST: 0.0.0.0
+      APP_PORT: 9003
+      LOAD_LOCAL_MODEL: 1
+      MODEL_TYPE: 'OPENAI'
+      MODEL_MAX_LENGTH: 50
+      MODEL_DEVICE_MAP: 'auto'
+      # Offline Model Config
+      MODEL_NAME: "tiiuae/falcon-7b-instruct"
+      MODEL_DIRECTORY: models/
+      # Online Model Config
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_MODEL_NAME: "gpt-3.5-turbo"
+    container_name: elgen-gpu-esg-model-service
+    ports:
+      - "9003:9003"
+    volumes:
+      - /media/elya2/elgen/elgen-esg-model-service/models/:/app/models/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: [ '0', '1' ]
+              capabilities: [ gpu ]
