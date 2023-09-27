@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xml:lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Live decoding</title>
+</head>
+
+<body>
+<h4>Messages received over the websocket connection</h4>
+<div>
+    <div class="response"></div>
+
+    <ul id="myList">
+    </ul>
+</div>
+<script>
+
+        var id = location.search.split('=')[1]
+        var stt= "{{stt_websocket|safe}}"
+        let ws = new WebSocket("ws://localhost:7777/ws/ddef8c89-38b3-42df-86d4-38833f0e89e0");
+
+        ws.onmessage = function(event) {
+          var response = JSON.parse(event.data);
+          console.log(response)
+
+
+          if (response.status === "SENDING") {
+
+            var concatenatedData = document.querySelector('.response').textContent + response.data;
+
+            document.querySelector('.response').textContent = concatenatedData;
+          }
+        };
+
+
+
+
+</script>
+</body>
+
+</html>
