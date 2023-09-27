@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME          = "dev-elgen-esg-model-service"
+        //ACR configs
+        registryUrl         = "elyadatacr.azurecr.io"
+        registryCredential  = "acr-credentials"
+        //K8S config
+        KS8_CONFIG_NAME     = "adhrout-kubeconfig"
+        KS8_NAMESPACE       = "elgen-dev"
+        KS8_DEPLOYMENT_NAME = "elgen-esg-model"
+        //Enable BuildKit in order to skip unnecessary stages and process only needed ones.
+        DOCKER_BUILDKIT = 1
+    }
+    options {
+        office365ConnectorWebhooks([[
+                startNotification: true,
+                notifySuccess: true,
+                notifyFailure: true,
+                url: 'https://elyadata.webhook.office.com/webhookb2/8977ddf0-a410-404c-b1bd-57e099dc5614@d95ea478-174a-401a-847f-f58ca5311905/JenkinsCI/cf92bc55c2a94176a0e0599e12b04976/d2e5ff3b-2451-4de3-b98f-57de1ad94421'
+            ]]
+        )
+    }
+    stages {
+        stage('SonarQube Analysis') {
+            when{ branch 'develop'}
+            steps{
+                script{
+                    docker.image('sonarsource/sonar-scanner-cli:4.6').inside('-v /var/run/docker.sock:/var/run/docker.sock --entrypoint=""') {
+                        sh "sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT} \
+                            -Dsonar.organization=elyadata \
+                            -Dsonar.sources=. \
+                            -Dsonar.exclusions=configuration/**,tests/** \
+                            -Dsonar.host.url=${SONAR_HOST} \
+                            -Dsonar.branch.name=${env.BRANCH_NAME} \
+                            -Dsonar.python.version=3.10"
+                    }
+                }
+            }
+        } // Sonar Scanner
+        stage('Building Docker image') {
+            when{ branch 'develop'}
+            steps {
+                script{
+                    img = docker.build("${IMAGE_NAME}:latest")
+                }
+            }
+        }
+        // Uploading Docker images into ACR
+        stage('Upload Image to ACR') {
+            when{ branch 'develop'}
+            steps{
+                script {
+                    docker.withRegistry( "http://${registryUrl}", registryCredential ) {
+                        img.push()
+                    }
+                }
+            }
+        }
+        stage('Deployment Rollout') {
+            when{ branch 'develop'}
+            steps {
+                script{
+                    docker.image('bitnami/kubectl').inside("--entrypoint=''"){
+                        withKubeConfig([credentialsId: "$KS8_CONFIG_NAME", namespace: "$KS8_NAMESPACE"]) {
+                            sh "kubectl -n $KS8_NAMESPACE rollout restart deployment/$KS8_DEPLOYMENT_NAME"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
