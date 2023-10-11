@@ -1,5 +1,11 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            cloud "k3s"
+            label "python-3.10"
+            defaultContainer "python"
+        }
+    }
     environment {
         IMAGE_NAME          = "lisa-elgen-esg-ingest"
         //ACR configs
@@ -10,9 +16,10 @@ pipeline {
         KS8_NAMESPACE       = "elgen-dev"
         KS8_DEPLOYMENT_NAME = "elgen-esg-ingest"
         // SONAR CONFIG
-        SONAR_TOKEN = credentials('SonarCloud-Server-authentication-token')
-        SONAR_HOST = "https://sonarcloud.io"
-        SONAR_PROJECT = "elyadata_elgen-esg-ingest-service"
+        SONAR_TOKEN         = credentials('SONARQUBE_ACCESS_TOKEN')
+        SONAR_HOST          = "https://sonarqube.elyadata.com/"
+        SONAR_PROJECT       = "elyadata_elgen-esg-ingest-service"
+        SONAR_PR_ARGS       = " "
         //Enable BuildKit in order to skip unnecessary stages and process only needed ones.
         DOCKER_BUILDKIT = 1
     }
@@ -26,31 +33,99 @@ pipeline {
         )
     }
     stages {
-        stage('SonarQube Analysis') {
-            when{ branch 'develop'}
+        stage('Prepare Environment'){
+            steps{
+               script{
+                    sh "python3 -m venv venv"
+                }
+            }
+        }
+
+        stage('Install Requirements'){
             steps{
                 script{
-                    docker.image('sonarsource/sonar-scanner-cli:4.6').inside('-v /var/run/docker.sock:/var/run/docker.sock --entrypoint=""') {
+                    withPythonEnv("${WORKSPACE}/venv/bin/python") {
+                        sh "pip install -r requirements.txt"
+                        sh "pip install coverage pytest-cov pytest pylint bandit"
+                    }
+                }
+            }
+        }
+
+        stage('Run tests') {
+            parallel{
+                stage("Unit Tests"){
+                    steps{
+                        script{
+                            withPythonEnv("${WORKSPACE}/venv/bin/python") {
+                                sh "coverage run -m pytest --junitxml=reports/pytest-report.xml tests/unit_tests"
+                                sh "coverage xml -o reports/coverage.xml"
+                                sh 'pylint cases --exit-zero -rn --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" --output-format=parseable > reports/pylint-report.xml'
+                            }
+                        } // script
+                    }
+                }
+            }
+        } // Run tests container
+        stage('prepare sonarqube on pr'){
+            when{ changeRequest() }
+            steps{
+                script{
+                    SONAR_PR_ARGS = "-Dsonar.pullrequest.base=${env.CHANGE_TARGET} \
+                            -Dsonar.pullrequest.branch=${env.BRANCH_NAME} \
+                            -Dsonar.pullrequest.key=${env.CHANGE_ID}"
+                }
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps{
+                script{
+                    withSonarQubeEnv(credentialsId: "SONARQUBE_ACCESS_TOKEN"){
                         sh "sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT} \
+                            -Dsonar.projectName=${SONAR_PROJECT} \
                             -Dsonar.organization=elyadata \
                             -Dsonar.sources=. \
-                            -Dsonar.exclusions=configuration/**,tests/** \
+                            -Dsonar.exclusions=configuration/**,tests/**,venv/** \
                             -Dsonar.host.url=${SONAR_HOST} \
-                            -Dsonar.branch.name=${env.BRANCH_NAME} \
-                            -Dsonar.python.version=3.10"
+                            -Dsonar.python.coverage.reportPaths=reports/coverage.xml \
+                            -Dsonar.python.xunit.reportPath=reports/pytest-report.xml \
+                            -Dsonar.python.pylint.reportPaths=reports/pylint-report.xml \
+                            -Dsonar.python.version=3.10 ${SONAR_PR_ARGS}"
                     }
                 }
             }
         } // Sonar Scanner
+        stage("Quality Gate") {
+            steps {
+              timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true
+              } // timeout
+            } //steps 
+        } // stage
         stage('Building Docker image') {
             when{ branch 'develop'}
             steps {
                 script{
-                    img = docker.build("${IMAGE_NAME}:latest")
+                    img = docker.build("${IMAGE_NAME}:latest", "-f Dockerfile ${WORKSPACE}/.")
                 }
             }
         }
-        // Uploading Docker images into ACR
+        stage('Scanning Docker image'){
+            when {branch 'develop'}
+            steps{
+                script{
+                    try{
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                            bitnami/trivy:0.44.0 image \
+                            --exit-code 1 \
+                            --severity CRITICAL \
+                            --no-progress $IMAGE_NAME:latest"
+                    } catch (Exception e) {
+                        echo 'Vulnerability of CRITICAL severity has been found.'
+                    }
+                }
+            }
+        } // Scan Docker image
         stage('Upload Image to ACR') {
             when{ branch 'develop'}
             steps{
@@ -60,7 +135,8 @@ pipeline {
                     }
                 }
             }
-        }
+        }// Uploading Docker images into ACR
+
         stage('Deployment Rollout') {
             when{ branch 'develop'}
             steps {
@@ -72,11 +148,6 @@ pipeline {
                     }
                 }
             }
-        }
-    }
-    post {
-        always {
-            cleanWs()
         }
     }
 }

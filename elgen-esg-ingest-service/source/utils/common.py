@@ -1,11 +1,18 @@
+import logging
+
 from nostril import nonsense
 
-
-def divide_into_batches(lst, batch_size):
-    return [lst[i:i + batch_size] for i in range(0, len(lst), batch_size)]
+from source.schema.elastic_search_schemas import Document
 
 
-def clean_non_sense_text(text):
+def divide_into_batches(documents_list: list[Document], batch_size: int) -> list[list[Document]]:
+    """Divide documents into batches of documents"""
+    logging.info("Divide documents into batches")
+    return [documents_list[i:i + batch_size] for i in range(0, len(documents_list), batch_size)]
+
+
+def clean_non_sense_text(text: str) -> str:
+    """Clean text that is deemed worthy"""
     clean_text_list = []
     for sub_text in text.split('.'):
         try:

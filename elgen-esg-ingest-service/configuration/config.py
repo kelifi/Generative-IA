@@ -1,6 +1,6 @@
 from pydantic import BaseSettings, Field
 
-from source.schema.base import AppEnv
+from source.schema.app_env_enum import AppEnv
 
 
 class AppConfig(BaseSettings):
@@ -38,7 +38,9 @@ class TextProcessingConfig(BaseSettings):
 class VectorStoreApiConfig(BaseSettings):
     HOST = Field(env='VEC_HOST', default='localhost')
     PORT = Field(env='VEC_PORT', default=8004)
-    STORE_ENDPOINT = Field(env="VEC_STORE_ENDPOINT", default="milvus/store-data")
+    STORE_ENDPOINT = Field(env="VEC_STORE_ENDPOINT", default="es/store-data")
+    BATCH_SIZE = Field(env="BATCH_SIZE", default=10,
+                       description="How many batches to split the data before sending to vector store service")
 
     @property
     def VEC_URL(self):
@@ -47,13 +49,3 @@ class VectorStoreApiConfig(BaseSettings):
     @property
     def VEC_STORE_URL(self):
         return f"{self.VEC_URL}/{self.STORE_ENDPOINT}"
-
-
-app_config = AppConfig()
-doc_config = DocumentsConfig()
-
-text_proc_config = TextProcessingConfig()
-
-es_config = ElasticSearchConfig()
-
-vec_api_config = VectorStoreApiConfig()
