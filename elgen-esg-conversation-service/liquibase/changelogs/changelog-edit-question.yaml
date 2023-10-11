@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: fixQuestionContentLength
+      author: Ahmed Abassi
+      changes:
+        - modifyDataType:
+            tableName: question
+            columnName: content
+            newDataType: TEXT

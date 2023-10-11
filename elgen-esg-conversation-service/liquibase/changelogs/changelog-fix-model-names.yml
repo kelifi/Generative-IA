@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: updateModelNames
+      author: Ahmed Abassi
+      changes:
+        - update:
+            tableName: model
+            where: 1 = 1
+            columns:
+              - name: name
+                valueComputed: |
+                  CASE
+                    WHEN code = 'M1' THEN 'Online Model'
+                    WHEN code = 'M2' THEN 'Elyadata Model V1'
+                  ELSE name
+                  END

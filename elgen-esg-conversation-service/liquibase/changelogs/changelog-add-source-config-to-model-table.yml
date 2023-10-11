@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: addSourceConfigColumnsToModelTable
+      author: Ahmed Abassi
+      changes:
+        - addColumn:
+            tableName: model
+            columns:
+              - column:
+                  name: max_web
+                  type: int
+                  defaultValueNumeric: 2
+              - column:
+                  name: max_doc
+                  type: int
+                  defaultValueNumeric: 2

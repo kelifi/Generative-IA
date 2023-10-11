@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: fixWebSourceParagraphsLength
+      author: Ahmed Abassi
+      changes:
+        - modifyDataType:
+            tableName: source_web
+            columnName: paragraphs
+            newDataType: TEXT

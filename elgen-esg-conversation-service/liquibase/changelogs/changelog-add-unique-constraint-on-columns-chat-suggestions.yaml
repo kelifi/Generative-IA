@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: addUniqueConstraint
+      author: Salma GAFSI
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_chat_suggestions
+            columnNames: content, workspace_id
+            constraintName: uq_content_workspace_combination

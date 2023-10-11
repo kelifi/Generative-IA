@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: createSourceDBTable
+      author: Imen Laouirine
+      changes:
+        - createTable:
+            tableName: source_type
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+                  defaultValue: "database"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: available
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: update_date
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true
+            remarks: 'Created source_type table'

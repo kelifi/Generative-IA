@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: rename-column-in-workspace
+      author: Akram Gharbi
+      changes:
+        - renameColumn:
+            tableName: workspace
+            oldColumnName: workspace_name
+            newColumnName: name
+            columnDataType: VARCHAR(255)

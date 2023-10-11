@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: addIsSpecificColumn
+      author: Amine Ben Hassine
+      changes:
+        - addColumn:
+            tableName: question
+            columns:
+              - column:
+                  name: is_specific
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

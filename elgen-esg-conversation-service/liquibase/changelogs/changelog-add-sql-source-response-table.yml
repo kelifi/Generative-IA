@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: createSqlSourceResponseTable
+      author: Khaled Adrani
+      changes:
+        - createTable:
+            tableName: sql_source_response
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: creation_date
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+                    defaultValueComputed: now()
+              - column:
+                  name: deleted
+                  type: Boolean
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              - column:
+                  name: question_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    references:
+                      tableName: question
+                      columnNames: id
+                      onDelete: CASCADE
+              - column:
+                  name: query
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result
+                  type: VARCHAR
+                  constraints:
+                    nullable: true

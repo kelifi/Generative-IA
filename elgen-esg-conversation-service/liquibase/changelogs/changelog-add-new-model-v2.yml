@@ -1,0 +1,41 @@
+# This change set to the model table should not be used anymore as there is an endpoint specifically to add new models
+# to the database
+
+databaseChangeLog:
+  - changeSet:
+      id: addV2Model
+      author: Ahmed Abassi
+      changes:
+        - insert:
+            tableName: model
+            columns:
+              - column:
+                  name: id
+                  value: a9a776ca-7ef7-474e-adb1-6f270f75a737
+              - column:
+                  name: name
+                  value: 'Elyadata V2 Model'
+              - column:
+                  name: code
+                  value: 'M3'
+              - column:
+                  name: route
+                  value: 'http://20.232.165.149:8000'
+              - column:
+                  name: available
+                  value: true
+              - column:
+                  name: default
+                  value: false
+              - column:
+                  name: type
+                  value: chat
+              - column:
+                  name: creation_date
+                  value: now()
+              - column:
+                  name: max_web
+                  value: 2
+              - column:
+                  name: max_doc
+                  value: 2

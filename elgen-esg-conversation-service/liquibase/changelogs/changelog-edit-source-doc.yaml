@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: fixSourceDocumentsContentLength
+      author: Achref Jemaiel
+      changes:
+        - modifyDataType:
+            tableName: source_document
+            columnName: content
+            newDataType: TEXT
+  - changeSet:
+      id: updateSourceDocumentsTable
+      author: Achref Jemaiel
+      changes:
+        - addColumn:
+            tableName: source_document
+            columns:
+              - column:
+                  name: document_id
+                  type: UUID
+                  constraints:
+                    nullable: true

@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: fixAnswerTableContentLength
+      author: Khaled Adrani
+      changes:
+        - modifyDataType:
+            tableName: answer
+            columnName: content
+            newDataType: VARCHAR
+
+  - changeSet:
+      id: updateAnswerTable
+      author: Khaled Adrani
+      changes:
+        - addColumn:
+            tableName: answer
+            columns:
+              - column:
+                  name: author
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: answer
+            columns:
+              - column:
+                  name: edited
+                  type: boolean
+                  constraints:
+                    nullable: true
+                    defaultValueBoolean: false
+        - addColumn:
+            tableName: answer
+            columns:
+              - column:
+                  name: update_date
+                  type: datetime
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: createVersioningAnswerTable
+      author: Khaled Adrani
+      changes:
+      - createTable:
+          tableName: versioned_answer
+          columns:
+            - column:
+                name: answer_id
+                type: uuid
+                constraints:
+                  nullable: false
+            - column:
+                name: content
+                type: varchar
+                constraints:
+                  nullable: false
+            - column:
+                name: rating
+                type: varchar(255)
+                constraints:
+                  nullable: true
+            - column:
+                name: author
+                type: varchar(255)
+                constraints:
+                  nullable: true
+            - column:
+                name: edited
+                type: boolean
+                constraints:
+                  nullable: true
+                  defaultValueBoolean: false
+            - column:
+                name: id
+                type: uuid
+                constraints:
+                  nullable: false
+            - column:
+                name: creation_date
+                type: datetime
+                constraints:
+                  nullable: false
+            - column:
+                name: update_date
+                type: datetime
+                constraints:
+                  nullable: true
+            - column:
+                name: deleted
+                type: boolean
+                constraints:
+                  nullable: true
+          primaryKey:
+            columnNames:
+              - id
+          uniqueConstraints:
+            - uniqueConstraint:
+                columnNames:
+                  - id
+          foreignKeyConstraints:
+            - foreignKeyConstraint:
+                baseTableName: versioned_answer
+                baseColumnNames:
+                  - answer_id
+                referencedTableName: answer
+                referencedColumnNames:
+                  - id
+                onDelete: CASCADE

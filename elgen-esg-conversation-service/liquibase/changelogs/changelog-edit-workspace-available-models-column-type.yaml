@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: renameColumnTypeSource
+      author: Salma GAFSI
+      changes:
+        - modifyDataType:
+            tableName: workspace
+            columnName: available_model_codes
+            newDataType: VARCHAR(255)

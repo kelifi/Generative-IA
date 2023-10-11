@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: addUpdateDateColumn
+      author: Salma GAFSI
+      changes:
+        - addColumn:
+            tableName: workspace_chat_suggestions
+            columns:
+              - column:
+                  name: update_date
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true

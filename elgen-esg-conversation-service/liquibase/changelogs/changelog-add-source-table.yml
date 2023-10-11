@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: addSourceTables
+      author: Amine Ben Hassine
+      changes:
+        - createTable:
+            tableName: sources
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_id
+                  type: UUID
+                  constraints:
+                    nullable: true
+              - column:
+                  name: url
+                  type: VARCHAR
+                  constraints:
+                    nullable: true
+              - column:
+                  name: description
+                  type: VARCHAR
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_type
+                  type: VARCHAR
+                  constraints:
+                    nullable: true
+              - column:
+                  name: category
+                  type: VARCHAR
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_metadata
+                  type: JSON
+                  constraints:
+                    nullable: true
+            remarks: 'Created source table'

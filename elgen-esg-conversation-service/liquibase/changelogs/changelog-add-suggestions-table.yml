@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: addChatSuggestionTable
+      author: Salma GAFSI
+      changes:
+        - createTable:
+            tableName: workspace_chat_suggestions
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: creation_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: available
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+
+            foreignKeyConstraints:
+              - foreignKeyConstraint:
+                  baseTableName: workspace_chat_suggestions
+                  baseColumnNames: workspace_id
+                  referencedTableName: workspace
+                  referencedColumnNames: id
+                  onDelete: CASCADE
+                  constraintName: fk_workspace_id
+            uniqueConstraints:
+              - uniqueConstraint:
+                  columnNames: content, workspace_id
+                  constraintName: uq_content_workspace_combination

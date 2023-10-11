@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: addColumnsWorkspaceTable
+      author: Imen Laouirine
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: type_id
+                  type: UUID
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_type_id
+                  type: UUID
+                  constraints:
+                    nullable: true
+              - column:
+                  name: classification_change_enabled
+                  type: boolean
+                  defaultValueBoolean: True
+              - column:
+                  name: available_model_codes
+                  type: VARCHAR(10) []
+                  constraints:
+                    nullable: true
+              - column:
+                  name: stop_answer_process
+                  type: boolean
+                  defaultValueBoolean: false
+        - addForeignKeyConstraint:
+                  baseColumnNames: type_id
+                  baseTableName: workspace
+                  referencedColumnNames: id
+                  referencedTableName: workspace_type
+                  constraintName:  fk_workspace_type
+                  onDelete: CASCADE
+        - addForeignKeyConstraint:
+                  baseColumnNames: source_type_id
+                  baseTableName: workspace
+                  referencedColumnNames: id
+                  referencedTableName: source_type
+                  constraintName:  fk_source_type
+                  onDelete: CASCADE
+          remarks: 'Added type_id, source_type_id, classification_change_enabled and available models to the workspace table'

@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: addColumnsPromptAnswerAnalytics
+      author: Oussema Ben Abdallah
+      changes:
+        - addColumn:
+            tableName: answer_analytics
+            columns:
+              - column:
+                  name: prompt
+                  type: TEXT
+                  constraints:
+                    nullable: true

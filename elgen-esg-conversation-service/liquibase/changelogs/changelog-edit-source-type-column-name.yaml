@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: renameColumnTypeSource
+      author: Salma GAFSI
+      changes:
+        - renameColumn:
+            tableName: source_type
+            oldColumnName: type
+            newColumnName: type_name

@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - include:
+      - file: changelog-init.yaml
+
+  - include:
+      - file: changelog-edit-answer.yaml
+
+  - include:
+      - file: changelog-edit-source-doc.yaml
+
+  - include:
+      - file: changelog-edit-question.yaml
+
+  - include:
+      - file: changelog-answer-analytics.yaml
+
+  - include:
+      - file: changelog-edit-source-web.yaml
+
+  - include:
+      - file: changelog-add-model-discovery-table.yml
+
+  - include:
+      - file: changelog-alter-answer-analytics-model-name-to-code.yml
+
+  - include:
+      - file: changelog-add-source-config-to-model-table.yml
+
+  - include:
+      - file: changelog-fix-model-discovery-table.yml
+
+  - include:
+      - file: changelog-fix-model-names.yml
+
+  - include:
+      - file: changelog-add-model-name-to-analytics.yml
+
+  - include:
+      - file: changelog-add-workspaces-table.yml
+
+  - include:
+      - file: changelog-fix-user-workspace-constraint.yml
+
+  - include:
+      - file: changelog-fix-workspace-field-name.yml
+
+  - include:
+      - file: changelog-add-source-type-table.yml
+
+  - include:
+      - file: changelog-add-workspace_type-table.yml
+
+  - include:
+      - file: changelog-add-new-fields-to-workspace-table.yml
+  - include:
+      - file: changelog-edit-source-type-column-name.yaml
+  - include:
+      - file: changelog-edit-workspace-available-models-column-type.yaml
+  - include:
+      - file: changelog-add-source-table.yml
+  - include:
+      - file: changelog-add-sql-source-response-table.yml
+  - include:
+      - file: changelog-add-is-specific-column-to-question-table.yaml
+  - include:
+      - file: changelog-answer-analytics-add-column-prompt.yaml
+  - include:
+      - file: changelog-add-suggestions-table.yml
+  - include:
+      - file: changelog-add-unique-constraint-on-columns-chat-suggestions.yaml
+  - include:
+      - file: changelog-add-updated-date-column-chat-suggestion-table.yaml
