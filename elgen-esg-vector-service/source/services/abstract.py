@@ -7,7 +7,7 @@ from source.schema.requests import SimilarDocumentsOutput
 class VectorStoreService(ABC):
 
     @abstractmethod
-    async def get_similar_documents(self, query: str, n_results: int) -> SimilarDocumentsOutput:
+    async def get_similar_documents(self, query: str, n_results: int, workspace_id: str) -> SimilarDocumentsOutput:
         """return paragraphs/documents that are similar to the query"""
         raise NotImplemented("Method should be implemented in the child class")
 

@@ -51,13 +51,9 @@ class MilvusNotFoundError(ServiceException):
         super().__init__(detail)
 
 
-class MilvusSimilaritySearchError(ServiceException):
-    def __init__(self, detail="An error occurred when doing the similarity search"):
-        super().__init__(detail)
-
-
 class ExistenceCheckError(ServiceException):
     """Exception raised when an existence check fails"""
+
     def __init__(self, expression: str, milvus_error: str):
         detail = f'the following expression {expression}, could not be executed, the following is the error! {milvus_error}'
         super().__init__(detail)
@@ -65,23 +61,34 @@ class ExistenceCheckError(ServiceException):
 
 class DataAlreadyInMilvusError(ServiceException):
     """Exception raised when the data exists in milvus"""
+
     def __init__(self, detail="The data you are trying to save is already in Milvus"):
         super().__init__(detail)
 
 
 class ElasticsearchStoreDataError(ServiceException):
     """Exception if we fail to save data in elasticsearch"""
+
     def __init__(self, detail="Failed to store data into elasticsearch"):
         super().__init__(detail)
 
 
 class ElasticsearchFetchDataError(ServiceException):
     """Exception if we fail to fetch data from elasticsearch"""
+
     def __init__(self, detail="Failed to store data into elasticsearch"):
         super().__init__(detail)
 
 
 class ServiceOutputValidationError(ServiceException):
     """Exception raised when the data doesn't fit in the expected schemas"""
+
     def __init__(self, detail="Failed to validate the schema of output data"):
+        super().__init__(detail)
+
+
+class ElasticSearchCountError(ServiceException):
+    """Exception raised when an error arises during the count"""
+
+    def __init__(self, detail="an error occurred during the count of the files in elastic search"):
         super().__init__(detail)

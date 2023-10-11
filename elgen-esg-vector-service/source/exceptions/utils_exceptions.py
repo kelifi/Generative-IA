@@ -13,3 +13,8 @@ class EmbeddingModelNotFoundError(Exception):
     def __init__(self, model_name: str):
         detail = f"the model {model_name} was not found in the HuggingFace repository!"
         super().__init__(detail)
+
+
+class ParseError(Exception):
+    def __init__(self, detail: str = "parsing error"):
+        super().__init__(detail)

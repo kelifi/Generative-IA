@@ -18,6 +18,7 @@ class StoreDocumentsRequest(BaseModel):
                                                            "metadata": {
                                                                "file_name": "nature_article.pdf",
                                                                "file_id": "1001",
+                                                               "workspace_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                                                                "es_id": "es_001"
                                                            }
                                                        },
@@ -26,6 +27,7 @@ class StoreDocumentsRequest(BaseModel):
                                                            "metadata": {
                                                                "file_name": "urban_blog.pdf",
                                                                "file_id": "1002",
+                                                               "workspace_id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
                                                                "es_id": "es_002"
                                                            }
                                                        },
@@ -34,6 +36,7 @@ class StoreDocumentsRequest(BaseModel):
                                                            "metadata": {
                                                                "file_name": "nature_podcast.pdf",
                                                                "file_id": "1003",
+                                                               "workspace_id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
                                                                "es_id": "es_003"
                                                            }
                                                        },
@@ -42,6 +45,7 @@ class StoreDocumentsRequest(BaseModel):
                                                            "metadata": {
                                                                "file_name": "coffee_magazine.pdf",
                                                                "file_id": "1004",
+                                                               "workspace_id": "3fa85f64-5717-4562-b3fc-2c963f66afa9",
                                                                "es_id": "es_004"
                                                            }
                                                        },
@@ -50,6 +54,7 @@ class StoreDocumentsRequest(BaseModel):
                                                            "metadata": {
                                                                "file_name": "coastal_blog.pdf",
                                                                "file_id": "1005",
+                                                               "workspace_id": "3fa85f64-5717-4562-b3fc-2c963f66afa5",
                                                                "es_id": "es_005"
                                                            }
                                                        }
@@ -63,6 +68,9 @@ class GetSimilarDocumentsRequest(BaseModel):
                        example="Hello World!"
                        )
     n_results: int = Field(..., description="max number of similar documents results", example=4)
+
+    workspace_id: str | None = Field(default=None, description="workspace of the user",
+                                     example='3fa85f64-5717-4562-b3fc-2c963f66afa6')
 
 
 class SimilarDocumentsOutput(BaseModel):
