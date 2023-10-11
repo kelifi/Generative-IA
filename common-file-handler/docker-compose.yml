@@ -1,0 +1,96 @@
+version: '3'
+services:
+  file_handler:
+    image: file_handler
+    environment:
+      - DB_HOST=postgresql
+      - DB_PORT=5432
+      - DB_NAME=file_handler_users_db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_USER_TABLE=users
+      - DEFAULT_PROVIDER=AzureBlobStorageProvider
+      - MONGO_HOST=mongodb
+      - MONGO_DB_NAME=file_handler
+      - MONGO_DB_PORT=27017
+      - MONGO_ID_COLLECTION=Id
+      - MONGO_USER=haythem
+      - MONGO_PASSWORD=root
+      - BLOB_ENDPOINT=http://azurite:10000/devstoreaccount1
+    restart: always
+    ports:
+    - "8011:8000"
+    depends_on:
+      - mongodb
+      - postgresql
+      - azurite
+    container_name: file_handler_service
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    hostname: azurite
+    command: "azurite-blob --loose --blobHost 0.0.0.0"
+    ports:
+      - "10000:10000"
+    volumes:
+      - ./test/azurite:/data
+    container_name: azurite
+  postgresql:
+    image: postgres:11
+    restart: always
+    ports:
+      - "15432:5432"
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=file_handler_users_db
+    container_name: postgresql
+
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    environment:
+      - MONGO_INITDB_DATABASE=file_handler
+      - MONGO_INITDB_ROOT_USERNAME=haythem
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    volumes:
+      - mongo-init.js /docker-entrypoint-initdb.d/
+      - /home/barry/mongodb/database:/data/db
+    ports:
+      - "27017:27017"
+    configs:
+      - source: ./init_db/init-mongo.sh
+        target: /docker-entrypoint-initdb.d/init-mongo.sh
+    restart: unless-stopped
+
+
+  phppgadmin:
+    restart: always
+    image: dockage/phppgadmin:latest
+    ports:
+    - "80:80"
+    - "443:443"
+    environment:
+    - PHP_PG_ADMIN_SERVER_DESC=PostgreSQL
+    - PHP_PG_ADMIN_SERVER_HOST=postgresql
+    - PHP_PG_ADMIN_SERVER_PORT=5432
+    - PHP_PG_ADMIN_SERVER_SSL_MODE=allow
+    - PHP_PG_ADMIN_SERVER_DEFAULT_DB=template1
+    - PHP_PG_ADMIN_SERVER_PG_DUMP_PATH=/usr/bin/pg_dump
+    - PHP_PG_ADMIN_SERVER_PG_DUMPALL_PATH=/usr/bin/pg_dumpall
+    - PHP_PG_ADMIN_DEFAULT_LANG=auto
+    - PHP_PG_ADMIN_AUTO_COMPLETE=default on
+    - PHP_PG_ADMIN_EXTRA_LOGIN_SECURITY=false
+    - PHP_PG_ADMIN_OWNED_ONLY=false
+    - PHP_PG_ADMIN_SHOW_COMMENTS=true
+    - PHP_PG_ADMIN_SHOW_ADVANCED=false
+    - PHP_PG_ADMIN_SHOW_SYSTEM=false
+    - PHP_PG_ADMIN_MIN_PASSWORD_LENGTH=1
+    - PHP_PG_ADMIN_LEFT_WIDTH=200
+    - PHP_PG_ADMIN_THEME=default
+    - PHP_PG_ADMIN_SHOW_OIDS=false
+    - PHP_PG_ADMIN_MAX_ROWS=30
+    - PHP_PG_ADMIN_MAX_CHARS=50
+    - PHP_PG_ADMIN_USE_XHTML_STRICT=false
+    - PHP_PG_ADMIN_HELP_BASE=http://www.postgresql.org/docs/%s/interactive/
+    - PHP_PG_ADMIN_AJAX_REFRESH=3
+    container_name: phppgadmin
