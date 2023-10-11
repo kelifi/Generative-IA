@@ -3,22 +3,27 @@ import logging
 from typing import AsyncGenerator
 from uuid import UUID
 
-import requests
+import httpx
+from aiohttp import ClientSession
 from fastapi import HTTPException, status, Request
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
 from pydantic import ValidationError
 
+from configuration.config import app_config
 from source.exceptions.commons import NotOkServiceResponse
-from source.exceptions.custom_exceptions import SchemaError, UserInformationFormatError
+from source.exceptions.custom_exceptions import SchemaError, UserInformationFormatError, ModelConfigError
 from source.models.enums import RequestMethod
 from source.schemas.answer_schemas import AnswerRatingRequest, AnswerRatingResponse, AnswerUpdatingRequest, \
     VersionedAnswerResponse
 from source.schemas.api_schemas import SourceResponse, AnswerOutputSchema, ModelInfoSchema, PromptOutputSchema, \
-    QuestionSchema, QuestionInput, ModelPostInfoSchema, ModelSourcesUpdateSchema
+    QuestionInput, ModelPostInfoSchema, ModelSourcesUpdateSchema, ChatModelsOutputSchema, \
+    QuestionLimitOutputSchema
+from source.schemas.common import QueryDepth
 from source.schemas.conversation_schemas import QuestionInputSchema, AnswerSchema
-from source.schemas.source_documents_schemas import SourceSchema, WebSourceSchema, SourceLimitSchema
+from source.schemas.source_schemas import SourceSchema, WebSourceSchema, SourceLimitSchema
 from source.schemas.streaming_answer_schema import ModelStreamingErrorResponse
+from source.schemas.workspace_schemas import WorkspaceTypeModel, WorkspaceTypesEnum
 from source.services.keycloak_service import KeycloakService
 from source.utils.utils import make_request
 
@@ -29,17 +34,20 @@ class ChatService:
         self.__keycloak_service = keycloak_service
 
     async def add_question(self, user_id: str, conversation_id: str, question: QuestionInputSchema, skip_doc: bool,
-                           skip_web: bool) -> QuestionSchema | NotOkServiceResponse:
+                           skip_web: bool, workspace_id: UUID,
+                           use_classification: bool = True) -> QuestionLimitOutputSchema | NotOkServiceResponse:
         headers = {
-            "user-id": user_id
+            "user-id": user_id,
+            "workspace-id": str(workspace_id)
         }
         params = {
             'conversation-id': conversation_id,
             'skip_doc': json.dumps(skip_doc),
-            'skip_web': json.dumps(skip_web)
+            'skip_web': json.dumps(skip_web),
+            'use_classification': json.dumps(use_classification)
         }
         question_response = await make_request(
-            service_url=self.config["CONVERSATION_SERVICE_URL"],
+            service_url=self.config.get("CONVERSATION_SERVICE_URL"),
             uri="/conversations/question",
             method=RequestMethod.POST,
             body=question.dict(),
@@ -51,7 +59,7 @@ class ChatService:
             return question_response
 
         try:
-            return QuestionSchema(**question_response)
+            return QuestionLimitOutputSchema(**question_response)
         except ValidationError as error:
             logging.error(f"Failed to create Question: {error}")
             raise UserInformationFormatError from error
@@ -77,6 +85,15 @@ class ChatService:
             method=RequestMethod.GET,
         )
 
+    async def get_available_chat_models_by_workspace_id(self, workspace_id: UUID) -> ChatModelsOutputSchema:
+        """Get available models for chat by workspace_id"""
+        models_endpoint = self.config.get("MODELS_ENDPOINT")
+        return await make_request(
+            service_url=self.config.get("CONVERSATION_SERVICE_URL"),
+            uri=f"{models_endpoint}/workspaces?workspace_id={workspace_id}",
+            method=RequestMethod.GET,
+        )
+
     async def add_model(self, model_info_input: ModelPostInfoSchema) -> ModelInfoSchema:
         """Add a new model with a unique model code"""
         return await make_request(
@@ -96,13 +113,29 @@ class ChatService:
 
         )
 
+    async def get_model_config_per_model_code(self, model_code: str) -> SourceLimitSchema:
+        model_info_url = self.config.get("MODELS_ENDPOINT")
+        source_config = await make_request(
+            service_url=self.config.get("CONVERSATION_SERVICE_URL"),
+            uri=f"{model_info_url}/{model_code}",
+            method=RequestMethod.GET,
+            query_params={"model_code": model_code},
+        )
+        try:
+            return SourceLimitSchema(modelCode=source_config.get("code"),
+                                     maxLocal=source_config.get("max_doc"),
+                                     maxWeb=source_config.get("max_web"))
+        except ValidationError as error:
+            logging.error(error)
+            raise ModelConfigError(detail="Could not extract the sources configuration")
+
     async def get_web_source(self, user_id: str, question: QuestionInput, model_code: str,
                              web_sources_count: int | None) -> SourceResponse:
         """Validate if the count of web sources is correct, fetch them from the sources service then save them into
         conversation service before returning them"""
 
         if web_sources_count is None:
-            sources_config = await self._extract_config_per_model(model_code=model_code)
+            sources_config = await self.get_model_config_per_model_code(model_code=model_code)
             web_sources_count = sources_config.max_web
 
         headers = {
@@ -118,7 +151,7 @@ class ChatService:
             headers=headers
         )
         if isinstance(web_sources, NotOkServiceResponse):
-            raise HTTPException(status_code=500, detail="failed to get sources documents")
+            raise HTTPException(status_code=500, detail="failed to get web sources")
         if web_sources_data := web_sources.get("data"):
             # save web sources in db if web_sources_data is not an empty list
             web_sources_response = await make_request(
@@ -132,7 +165,7 @@ class ChatService:
                 headers=headers
             )
             if isinstance(web_sources_response, NotOkServiceResponse):
-                raise HTTPException(status_code=500, detail="failed to get sources response")
+                raise HTTPException(status_code=500, detail="failed to get web sources")
             try:
                 return SourceResponse(data=[WebSourceSchema(**data) for data in web_sources_response], detail="success")
             except ValidationError as error:
@@ -141,12 +174,12 @@ class ChatService:
         return web_sources
 
     async def get_source_docs(self, user_id: str, question: QuestionInput, model_code: str,
-                              local_sources_count: int | None) -> SourceResponse:
+                              local_sources_count: int | None, workspace_id: UUID) -> SourceResponse:
         """Validate if the count of local sources is correct, fetch them from the sources service then save them into
         conversation service before returning them"""
 
         if local_sources_count is None:
-            sources_config = await self._extract_config_per_model(model_code=model_code)
+            sources_config = await self.get_model_config_per_model_code(model_code=model_code)
             local_sources_count = sources_config.max_local
 
         headers = {
@@ -158,7 +191,7 @@ class ChatService:
             uri="/sources/similar",
             method=RequestMethod.POST,
             body=jsonable_encoder({"content": question.content}),
-            query_params=jsonable_encoder({"local_sources_count": local_sources_count}),
+            query_params=jsonable_encoder({"local_sources_count": local_sources_count, "workspace_id": workspace_id}),
             headers=headers
         )
         if isinstance(similar_docs_response, NotOkServiceResponse):
@@ -260,6 +293,7 @@ class ChatService:
             headers=headers,
         )
 
+    # TODO remove this, as we will use the sources stored in conversation service
     async def _extract_config_per_model(self, model_code: str) -> SourceLimitSchema:
         """Extract the model config from the keycloak response"""
         source_configs = await self.__keycloak_service.get_sources_configurations()
@@ -272,8 +306,11 @@ class ChatService:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"the provided model code {model_code} has no available sources' configuration")
 
-    async def generate_answer_by_streaming(self, text: str, user_id: str, model_code: str,
-                                           question_id: str, request: Request) -> AsyncGenerator:
+    async def generate_answer_by_streaming(self, user_id: str, model_code: str, question_id: str, request: Request,
+                                           workspace_type: WorkspaceTypesEnum,
+                                           workspace_id: str,
+                                           query_depth: QueryDepth
+                                           ) -> AsyncGenerator:
         """
                Stream the answer to a given text asynchronously.
               Args:
@@ -282,24 +319,53 @@ class ChatService:
                 user_id (str): The user identifier.
                 model_code (str): The code of the model being used.
                 question_id (str): The identifier of the question.
+                workspace_type (WorkspaceTypesEnum): The type of workspace being used.
+                workspace_id (str): The identifier of the workspace
                Yields:
                    Union[bytes, dict]: The streamed chunks of data or an error dictionary.
         """
         headers = {
             "user-id": user_id,
-            "model-code": model_code
+            "model-code": model_code,
+            "workspace-id": workspace_id
         }
+        endpoint = f"/chat/answer/{question_id}/sql/stream" if workspace_type == WorkspaceTypesEnum.database else \
+            f"/chat/answer/{question_id}/stream"
 
-        response = requests.get(f'{self.config.get("CONVERSATION_SERVICE_URL")}/chat/answer/{question_id}/stream',
-                                headers=headers, json={"prompt": text}, stream=True)
+        query_params = {"queryDepth": query_depth.value} if workspace_type == WorkspaceTypesEnum.database else {}
 
-        if response.status_code == status.HTTP_200_OK:
-            for chunk in response.iter_content(chunk_size=self.config.get('RESPONSE_CHUNK_SIZE')):
-                if await request.is_disconnected():
-                    logger.info("Connection disconnected, end streaming!")
-                    break
-                yield chunk
-        else:
-            yield str(ModelStreamingErrorResponse(
-                detail=f"Request failed with status code {response.status_code}"))
-            return
+        async with httpx.AsyncClient() as client:
+            async with client.stream('GET', f'{self.config.get("CONVERSATION_SERVICE_URL")}{endpoint}',
+                                     headers=headers, params=query_params,
+                                     timeout=300) as resp:
+                if resp.status_code == status.HTTP_200_OK:
+                    async for chunk in resp.aiter_bytes():
+                        logger.info(f"chunk {chunk}")
+                        if await request.is_disconnected():
+                            logger.info("Connection disconnected, end streaming!")
+                            break
+                        yield chunk
+                else:
+                    yield str(ModelStreamingErrorResponse(
+                        detail=f"Request failed with status code {resp.status_code}"))
+
+
+    async def get_workspace_type_by_id(self, workspace_id: str) -> WorkspaceTypesEnum:
+        """
+        Get the workspace type by its id
+        Args:
+            workspace_id (str): The workspace identifier
+        Returns:
+            WorkspaceTypesEnum: The workspace type
+        Raises:
+            HTTPException: If the workspace type does not exist for that id
+        """
+        workspace_type_dict = await make_request(service_url=self.config.get("CONVERSATION_SERVICE_URL"),
+                                                 uri=f"/workspaces/{workspace_id}/type",
+                                                 method=RequestMethod.GET)
+
+        try:
+            return WorkspaceTypeModel(**workspace_type_dict).name
+        except (AttributeError, TypeError) as error:
+            logger.error(error)
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)

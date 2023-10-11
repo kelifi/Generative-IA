@@ -1,0 +1,168 @@
+pipeline {
+    agent {
+        kubernetes {
+            cloud "k3s"
+            label "python-3.10"
+            defaultContainer "python"
+        }
+    }
+    environment {
+        IMAGE_NAME          = "lisa-elgen-esg-bff"
+        //ACR configs
+        registryUrl         = "elyadatacr.azurecr.io"
+        registryCredential  = "acr-credentials"
+        //K8S config
+        KS8_CONFIG_NAME     = "local-k3s-kubeconfig"
+        KS8_NAMESPACE       = "elgen-dev"
+        KS8_DEPLOYMENT_NAME = "elgen-esg-bff"
+        // SONAR CONFIG
+        SONAR_TOKEN         = credentials('SONARQUBE_ACCESS_TOKEN')
+        SONAR_HOST          = "https://sonarqube.elyadata.com/"
+        SONAR_PROJECT = "elyadata_elgen-esg-bff"
+        SONAR_PR_ARGS       = " "
+        // PACT ENV
+        PACT_BROKER_API_KEY = credentials('pact-broker-api-key')
+        PACT_BROKER_URL     = "http://192.168.1.118:30111"
+        PACT_PROVIDER_NAME  = "ConversationService"
+        PACT_CONSUMER_NAME  = "BFF"
+        //Enable BuildKit in order to skip unnecessary stages and process only needed ones.
+        DOCKER_BUILDKIT = 1
+    }
+    options {
+        office365ConnectorWebhooks([[
+                startNotification: true,
+                notifySuccess: true,
+                notifyFailure: true,
+                url: 'https://elyadata.webhook.office.com/webhookb2/8977ddf0-a410-404c-b1bd-57e099dc5614@d95ea478-174a-401a-847f-f58ca5311905/JenkinsCI/cf92bc55c2a94176a0e0599e12b04976/d2e5ff3b-2451-4de3-b98f-57de1ad94421'
+            ]]
+        )
+    }
+    stages {
+        stage('Prepare Environment'){
+            steps{
+               script{
+                    sh "python3 -m venv venv"
+                }
+            }
+        }
+
+        stage('Install Requirements'){
+            steps{
+                script{
+                    sh "ls"
+                    withPythonEnv("${WORKSPACE}/venv/bin/python") {
+                        sh "pip install -r requirements.txt"
+                        sh "pip install coverage pytest-cov pytest pylint bandit"
+                    }
+                }
+            }
+        }
+
+        stage('Run tests') {
+            parallel{
+                // stage("Contract Tests"){
+                //     steps{
+                //         script{
+                //             withPythonEnv("${WORKSPACE}/venv/bin/python") {
+                //                 sh "coverage run -m pytest --junitxml=reports/pytest-report.xml tests/contract_test"
+                //             }
+                //         }
+                //     }
+                // }
+                stage("Unit Tests"){
+                    steps{
+                        script{
+                            withPythonEnv("${WORKSPACE}/venv/bin/python") {
+                                sh "coverage run -m pytest --junitxml=reports/pytest-report.xml tests/unit_tests"
+                                sh "coverage xml -o reports/coverage.xml"
+                                sh 'pylint cases --exit-zero -rn --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" --output-format=parseable > reports/pylint-report.xml'
+                            }
+                        } // script
+                    }
+                }
+            }
+        } // Run tests container
+        stage('prepare sonarqube on pr'){
+            when{ changeRequest() }
+            steps{
+                script{
+                    SONAR_PR_ARGS = "-Dsonar.pullrequest.base=${env.CHANGE_TARGET} \
+                            -Dsonar.pullrequest.branch=${env.BRANCH_NAME} \
+                            -Dsonar.pullrequest.key=${env.CHANGE_ID}"
+                }
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps{
+                script{
+                    withSonarQubeEnv(credentialsId: "SONARQUBE_ACCESS_TOKEN"){
+                        sh "sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT} \
+                            -Dsonar.projectName=${SONAR_PROJECT} \
+                            -Dsonar.organization=elyadata \
+                            -Dsonar.sources=. \
+                            -Dsonar.exclusions=configuration/**,tests/**,venv/** \
+                            -Dsonar.host.url=${SONAR_HOST} \
+                            -Dsonar.python.coverage.reportPaths=reports/coverage.xml \
+                            -Dsonar.python.xunit.reportPath=reports/pytest-report.xml \
+                            -Dsonar.python.pylint.reportPaths=reports/pylint-report.xml \
+                            -Dsonar.python.version=3.10 ${SONAR_PR_ARGS}"
+                    }
+                }
+            }
+        } // Sonar Scanner
+        stage("Quality Gate") {
+            steps {
+              timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true
+              } // timeout
+            } //steps 
+        } // stage
+        stage('Building Docker image') {
+            when{ branch 'develop'}
+            steps {
+                script{
+                    img = docker.build("${IMAGE_NAME}:latest", "-f Dockerfile ${WORKSPACE}/.")
+                }
+            }
+        }
+        stage('Scanning Docker image'){
+            when {branch 'develop'}
+            steps{
+                script{
+                    try{
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                            bitnami/trivy:0.44.0 image \
+                            --exit-code 1 \
+                            --severity CRITICAL \
+                            --no-progress $IMAGE_NAME:latest"
+                    } catch (Exception e) {
+                        echo 'Vulnerability of CRITICAL severity has been found.'
+                    }
+                }
+            }
+        } // Scan Docker image
+        stage('Upload Image to ACR') {
+            when{ branch 'develop'}
+            steps{
+                script {
+                    docker.withRegistry( "http://${registryUrl}", registryCredential ) {
+                        img.push()
+                    }
+                }
+            }
+        }// Uploading Docker images into ACR
+
+        stage('Deployment Rollout') {
+            when{ branch 'develop'}
+            steps {
+                script{
+                    docker.image('bitnami/kubectl').inside("--entrypoint=''"){
+                        withKubeConfig([credentialsId: "$KS8_CONFIG_NAME", namespace: "$KS8_NAMESPACE"]) {
+                            sh "kubectl -n $KS8_NAMESPACE rollout restart deployment/$KS8_DEPLOYMENT_NAME"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

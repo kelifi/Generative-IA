@@ -77,6 +77,15 @@ class MetadataObjParseError(Exception):
         self.detail = detail
 
 
+class FileTypeExtractionError(Exception):
+    """
+      Exception raised when parsing the guessed mimetype object fails
+      """
+
+    def __init__(self, detail: str = "Could not parse the mimetype object"):
+        self.detail = detail
+
+
 class UserRolesNotDefined(Exception):
     """
     Exception raised when a user does not have roles defined for them
@@ -101,4 +110,13 @@ class DataEncryptionError(Exception):
     """
 
     def __init__(self, detail: str = "error in decrypting the user data received"):
+        self.detail = detail
+
+
+class ModelConfigError(Exception):
+    """
+    Exception raised when the model's source config was not generated correctly
+    """
+
+    def __init__(self, detail: str = "Could not get the model's source configuration"):
         self.detail = detail

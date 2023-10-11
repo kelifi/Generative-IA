@@ -25,8 +25,9 @@ from source.schemas.common import AcknowledgeResponse, AcknowledgeTypes
 from source.schemas.keycloak_schemas import LoginData, LoginModel, RequestHeader, LoginRequest, UserInfo, \
     AdminTokenModel, \
     RegisterModel, KeycloakAttribute, ConversationInfo, KeycloakTokenInfo, TokenValidationModel, UserInfoRegistration, \
-    RefreshTokenRequest, ClientRole, UserCreationBulkRequest, KeycloakPartialImportResponse, UserCreationBulkResponse
-from source.schemas.source_documents_schemas import SourceLimitSchema
+    RefreshTokenRequest, ClientRole, UserCreationBulkRequest, KeycloakPartialImportResponse, UserCreationBulkResponse, \
+    UserInfoWorkspace
+from source.schemas.source_schemas import SourceLimitSchema
 from source.utils.utils import NotOkServiceResponse, make_request
 
 
@@ -41,11 +42,9 @@ class KeycloakService:
         Returns Keycloak Open ID Connect configuration
         :returns: dict: Open ID Configuration
         """
-
         return await make_request(
             service_url=self.keycloak_service_configuration['SERVER_URL'],
-            uri=os.path.join("/realms", self.keycloak_service_configuration['REALM'],
-                             ".well-known/openid-configuration"),
+            uri=f"/realms/{self.keycloak_service_configuration['REALM']}/.well-known/openid-configuration",
             headers={'Content-Type': RequestHeader.json}, method=RequestMethod.GET)
 
     async def login(self, user_login: LoginData) -> LoginModel:
@@ -79,9 +78,7 @@ class KeycloakService:
         """
         response = await make_request(
             service_url=self.keycloak_service_configuration['SERVER_URL'],
-            uri=os.path.join("realms",
-                             self.keycloak_service_configuration['REALM'],
-                             "protocol/openid-connect/token/introspect"),
+            uri=f"/realms/{self.keycloak_service_configuration['REALM']}/protocol/openid-connect/token/introspect",
             headers={'Content-Type': RequestHeader.urlencoded},
             keycloak_request_option=True,
             method=RequestMethod.POST,
@@ -216,7 +213,7 @@ class KeycloakService:
 
         response = await make_request(
             service_url=self.request_base_path,
-            uri=os.path.join("users", user_id),
+            uri=f"/users/{user_id}",
             keycloak_request_option=True,
             headers={
                 "Content-Type": RequestHeader.json,
@@ -229,6 +226,40 @@ class KeycloakService:
             raise UserNotFound(response.status_code, json.loads(response.body))
         return format_user_info(response, user_roles=user_roles) if update_attributes_option else response
 
+    async def get_all_users(self):
+        admin_token = await self._get_admin_token()
+        if isinstance(admin_token, NotOkServiceResponse):
+            logger.error("User not found")
+            raise UserNotFound(admin_token.status_code, json.loads(admin_token.body))
+
+        response = await make_request(
+            service_url=self.request_base_path,
+            uri="users",
+            keycloak_request_option=True,
+            headers={
+                "Content-Type": RequestHeader.json,
+                "Authorization": f"Bearer {admin_token.get('access_token')}",
+            },
+            method=RequestMethod.GET)
+
+        if isinstance(response, NotOkServiceResponse):
+            logger.error("User not found")
+            raise UserNotFound(response.status_code, json.loads(response.body))
+        return [format_user_info(keycloak_response=user,
+                                 workspace=True,
+                                 user_roles=[ClientRole.USER])
+                if user.get('attributes')
+                else None for user
+                in response]
+
+    async def get_workspace_users(self, users_ids: list) -> list[UserInfoWorkspace]:
+        users = await self.get_all_users()
+        return [user for user in users if user is not None and getattr(user, 'id', None) in users_ids]
+
+    async def get_workspace_non_included_users(self, users_ids: list) -> list[UserInfoWorkspace]:
+        users = await self.get_all_users()
+        return [user for user in users if user is not None and getattr(user, 'id', None) not in users_ids]
+
     async def check_user_limit(self, user_id: str, attribute_to_check: KeycloakAttribute) -> bool:
         """
         check if the user still have the access to create a conversation
@@ -237,7 +268,6 @@ class KeycloakService:
         :return:
         """
         user_profile = await self.get_user(user_id)
-
         try:
             conversation_info = ConversationInfo(**user_profile.user_actual_limits.dict()).dict(by_alias=True)
         except ValidationError:
@@ -313,7 +343,7 @@ class KeycloakService:
 
             response = await make_request(
                 service_url=self.request_base_path,
-                uri=os.path.join("users", user_id),
+                uri=f"/users/{user_id}",
                 body={"email": user_profile.email, "attributes": user_profile.user_actual_limits.dict(by_alias=True)},
                 headers={
                     "Content-Type": RequestHeader.json,
@@ -437,7 +467,7 @@ class KeycloakService:
         try:
             return await make_request(
                 service_url=self.request_base_path,
-                uri=os.path.join("users", user_id),
+                uri=f"/users/{user_id}",
                 body={"email": user_profile.email, "attributes": user_profile.user_actual_limits.dict(by_alias=True)},
                 headers={
                     "Content-Type": RequestHeader.json,
@@ -457,7 +487,7 @@ class KeycloakService:
         admin_token = await self._get_admin_token()
         return await make_request(
             service_url=self.request_base_path,
-            uri=os.path.join("users", user_id, "sessions"),
+            uri=f"/users/{user_id}/sessions",
             headers={
                 "Content-Type": RequestHeader.json,
                 "Authorization": f"Bearer {admin_token.get('access_token')}",
@@ -482,7 +512,7 @@ class KeycloakService:
         logger.info("kill the active session in keycloak")
         return await make_request(
             service_url=self.request_base_path,
-            uri=os.path.join("sessions", session_id),
+            uri=f"/sessions/{session_id}",
             headers={
                 "Content-Type": RequestHeader.json,
                 "Authorization": f"Bearer {admin_token.get('access_token')}",
@@ -518,7 +548,7 @@ class KeycloakService:
         return payload.resource_access.get(
             self.keycloak_service_configuration['KEYCLOAK_CLIENT_ID'], {}).get('roles')
 
-    def check_user_role(self, payload: KeycloakTokenInfo, roles_to_check: list[ClientRole]) -> None:
+    def check_user_role(self, payload: KeycloakTokenInfo, roles_to_check: list[ClientRole]) -> list[ClientRole]:
         """
         Use this method to validate a user given a list of roles to check
         :payload KeycloakTokenInfo:
@@ -531,6 +561,7 @@ class KeycloakService:
             if not bool(set(user_current_roles) & set(roles_to_check)):
                 raise HTTPException(detail="You are not allowed to do this action",
                                     status_code=status.HTTP_403_FORBIDDEN)
+            return user_current_roles
         except (KeyError, ValueError) as error:
             logger.error(f"unable to parse user roles: {error}")
             raise KeycloakError(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
