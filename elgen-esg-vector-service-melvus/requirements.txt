@@ -1,0 +1,14 @@
+chromadb==0.3.26
+tqdm==4.65.0
+loguru==0.7.0
+fastapi~=0.99.1
+pydantic~=1.10.10
+uvicorn~=0.22.0
+requests~=2.31.0
+dependency_injector==4.41.0
+sentence-transformers==2.2.2
+pymilvus==2.2.13
+opentelemetry-instrumentation-logging==0.38b0
+opentelemetry-sdk==1.18.0
+python-json-logger==2.0.7
+opentelemetry-exporter-otlp-proto-grpc==1.18.0
